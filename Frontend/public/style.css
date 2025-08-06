@@ -1,0 +1,295 @@
+body {
+  background: #181818;
+  color: #eee;
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* For WebKit browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 6px;
+  border: 3px solid #1e1e1e;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
+}
+
+/* Menu and Game containers */
+#menu,
+#matchmaking,
+#game {
+  position: absolute;
+  left: 50%;
+  top: 80px;
+  transform: translateX(-50%);
+  width: 700px;
+  transition: left 0.2s, transform 0.2s;
+  z-index: 10;
+}
+
+#menu,
+#matchmaking {
+  text-align: center;
+  background: #222;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px #0004;
+  padding: 40px 0 60px 0;
+}
+
+#game {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* When chat is open, shift game just a bit left to center it in remaining space */
+body.chat-open #game {
+  left: calc(50% - 120px); /* shift left by half chat width minus a bit */
+  transform: translateX(-50%);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Pong Canvas */
+#pong {
+  display: block;
+  background: #232323;
+  margin: 0 auto;
+  border-radius: 14px;
+  box-shadow: 0 2px 16px #0006;
+  width: 700px;
+  height: 400px;
+  max-width: 100vw;
+  max-height: 54vw;
+}
+
+/* Status */
+#gameStatus {
+  display: block;
+  text-align: center;
+  margin: 16px 0 24px 0;
+  font-size: 1.2em;
+}
+
+/* Buttons */
+#playBtn,
+#disconnectBtn,
+#pauseBtn,
+#openChatBtn {
+  background: #1976d2;
+  color: #fff;
+  font-size: 1em;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px #0003;
+  cursor: pointer;
+  margin: 0 8px;
+  transition: background 0.15s;
+}
+
+/* Disconnect Button */
+#disconnectBtn {
+  background: #d32f2f;
+  left: 24px;
+  top: 32px;
+  position: absolute;
+  z-index: 100;
+}
+
+/* Pause Button */
+#pauseBtn {
+  background: #1976d2;
+  position: absolute;
+  right: 90px;
+  top: 32px;
+  z-index: 100;
+  padding: 12px 28px;
+  margin-right: 18px;
+}
+
+/* When chat is open, move pause button left for spacing */
+body.chat-open #pauseBtn {
+  right: 340px;
+}
+
+/* Chat Open Button */
+#openChatBtn {
+  position: absolute;
+  right: 24px;
+  top: 32px;
+  z-index: 110;
+  padding: 12px 24px;
+  margin: 0;
+}
+
+/* Pause Button Disabled */
+#pauseBtn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Chat Box */
+#chatDiv {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 300px;
+  height: calc(100% - 48px);
+  background: #1a1a1a;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px #0003;
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  min-height: 340px;
+  max-height: 660px;
+}
+
+#chatList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 12px 12px 12px;
+  font-size: 1em;
+  word-break: break-word;
+}
+
+#chatDiv form {
+  display: flex;
+  padding: 8px;
+  background: #181818;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+#chatDiv input[type="text"] {
+  flex: 1;
+  border-radius: 4px;
+  border: none;
+  padding: 8px;
+  margin-right: 8px;
+  background: #222;
+  color: #fff;
+  font-size: 1em;
+}
+#chatDiv button[type="submit"] {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 1em;
+  cursor: pointer;
+}
+#chatDiv button[type="submit"]:hover {
+  background: #2196f3;
+}
+#chatDiv button:focus,
+#openChatBtn:focus,
+#pauseBtn:focus,
+#disconnectBtn:focus {
+  outline: 2px solid #ffd600;
+}
+
+/* Close chat button */
+#chatDiv > button {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 210;
+  transition: background 0.15s;
+}
+#chatDiv > button:hover {
+  background: #555;
+}
+
+/* Chat message colors */
+#chatList div {
+  margin: 2px 0;
+  padding: 0;
+  font-size: 1em;
+}
+#chatList .me {
+  color: #ffd600;
+}
+#chatList .system {
+  color: #ffd600;
+  font-style: italic;
+}
+#chatList .error {
+  color: #d32f2f;
+  font-style: italic;
+}
+
+/* Responsive for small screens */
+@media (max-width: 900px) {
+  #game,
+  #menu,
+  #matchmaking {
+    width: 98vw;
+    left: 1vw;
+    transform: none;
+  }
+  #pong {
+    width: 98vw;
+    height: 56vw;
+    max-width: 98vw;
+    max-height: 56vw;
+  }
+  #chatDiv {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 50vh;
+    width: 100vw;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 4px 18px #0007;
+  }
+  #pauseBtn,
+  #openChatBtn,
+  #disconnectBtn {
+    position: fixed !important;
+    top: 20px !important;
+    z-index: 1000;
+  }
+  #pauseBtn {
+    right: 90px !important;
+  }
+  #openChatBtn {
+    right: 24px !important;
+  }
+  #disconnectBtn {
+    left: 12px !important;
+    right: auto !important;
+  }
+}
+
+/* Utility: transition for game push */
+#game {
+  transition: left 0.2s, transform 0.2s;
+}
