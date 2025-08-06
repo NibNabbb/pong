@@ -294,11 +294,10 @@ function startGameLoop(room) {
   const FPS = 60;
   const game = games[room];
   let countdownActive = false;
+  let ballPaused = false;
 
-  // Initialize speed multiplier on game object
   game.speedMultiplier = 1;
 
-  // Increase speed multiplier by ~1% every second
   const speedIncreaseInterval = setInterval(() => {
     if (!games[room]) {
       clearInterval(speedIncreaseInterval);
@@ -313,11 +312,10 @@ function startGameLoop(room) {
       clearInterval(speedIncreaseInterval);
       return;
     }
-    // Handle pause voting and resume voting
+
     if (game.pendingPause && !game.paused) {
-      // Pause after next ball-wall event
       if (ballTouchingWall(game.ball)) {
-        game.paused = true;
+        ballPaused = true;
         game.pendingPause = false;
         game.pauseVotes = [false, false];
         io.to(room).emit("paused");
@@ -330,8 +328,8 @@ function startGameLoop(room) {
         io.to(room).emit("pause_pending_ball");
       }
     }
-    if (game.paused) {
-      // Resume vote logic
+
+    if (ballPaused) {
       if (game.pendingResume && !countdownActive) {
         countdownActive = true;
         let n = 3;
@@ -347,7 +345,7 @@ function startGameLoop(room) {
             setTimeout(emitCountdownTick, 800);
           } else {
             setTimeout(() => {
-              game.paused = false;
+              ballPaused = false;
               game.pendingResume = false;
               game.resumeVotes = [false, false];
               io.to(room).emit("resumed");
@@ -362,13 +360,11 @@ function startGameLoop(room) {
         }
         emitCountdownTick();
       }
-      return; // Don't move ball/paddles while paused
     }
 
-    // AI takes over if needed
     if (!game.aiVelocities) game.aiVelocities = [0, 0];
     const aiMaxAcceleration = 1.2;
-    const aiDampingToward = 0.9; // Reduced damping when ball moves away
+    const aiDampingToward = 0.9;
     const aiDampingTowardBall = 0.85;
     const aiErrorMargin = 10;
     const aiMaxSpeed = 15;
@@ -376,17 +372,13 @@ function startGameLoop(room) {
     for (let i = 0; i < 2; i++) {
       if (game.aiActive[i]) {
         const paddleCenter = game.paddles[i] + 40;
-
-        // Check if ball is moving toward AI paddle
         const ballMovingTowardAI =
           (i === 0 && game.ball.vx < 0) || (i === 1 && game.ball.vx > 0);
 
         if (!ballMovingTowardAI) {
-          // Ball moving away: move at half speed toward neutral position (centered)
-          const centerY = 160; // Center paddle target (assuming 0–320 range)
+          const centerY = 160;
           const diff = centerY - paddleCenter;
 
-          // Apply stronger acceleration toward center
           let acceleration = Math.max(
             -aiMaxAcceleration / 2,
             Math.min(aiMaxAcceleration / 2, diff * 0.3)
@@ -399,10 +391,9 @@ function startGameLoop(room) {
           if (game.aiVelocities[i] < -aiMaxSpeed / 2)
             game.aiVelocities[i] = -aiMaxSpeed / 2;
 
-          // Reduced damping for slower decay
           game.aiVelocities[i] *= aiDampingToward;
 
-          game.paddles[i] += game.aiVelocities[i] * game.speedMultiplier * 0.5; // half speed movement
+          game.paddles[i] += game.aiVelocities[i] * game.speedMultiplier * 0.5;
 
           game.paddles[i] = Math.max(0, Math.min(320, game.paddles[i]));
           continue;
@@ -432,41 +423,41 @@ function startGameLoop(room) {
       }
     }
 
-    // Ball physics with speed multiplier
-    game.ball.x += game.ball.vx * game.speedMultiplier;
-    game.ball.y += game.ball.vy * game.speedMultiplier;
+    if (!ballPaused) {
+      game.ball.x += game.ball.vx * game.speedMultiplier;
+      game.ball.y += game.ball.vy * game.speedMultiplier;
 
-    // Bounce top/bottom
-    if (game.ball.y - 10 < 0 || game.ball.y + 10 > 400) {
-      game.ball.vy *= -1;
-    }
-    // Paddle collision (left paddle)
-    if (
-      game.ball.x - 10 < 22 &&
-      game.ball.y > game.paddles[0] &&
-      game.ball.y < game.paddles[0] + 80
-    ) {
-      game.ball.vx = Math.abs(game.ball.vx);
-    }
-    // Paddle collision (right paddle)
-    if (
-      game.ball.x + 10 > 678 &&
-      game.ball.y > game.paddles[1] &&
-      game.ball.y < game.paddles[1] + 80
-    ) {
-      game.ball.vx = -Math.abs(game.ball.vx);
-    }
-    // Scoring
-    if (game.ball.x < 0) {
-      game.scores[1]++;
-      resetBall(game);
-    }
-    if (game.ball.x > 700) {
-      game.scores[0]++;
-      resetBall(game);
+      if (game.ball.y - 10 < 0 || game.ball.y + 10 > 400) {
+        game.ball.vy *= -1;
+      }
+
+      if (
+        game.ball.x - 10 < 22 &&
+        game.ball.y > game.paddles[0] &&
+        game.ball.y < game.paddles[0] + 80
+      ) {
+        game.ball.vx = Math.abs(game.ball.vx);
+      }
+
+      if (
+        game.ball.x + 10 > 678 &&
+        game.ball.y > game.paddles[1] &&
+        game.ball.y < game.paddles[1] + 80
+      ) {
+        game.ball.vx = -Math.abs(game.ball.vx);
+      }
+
+      if (game.ball.x < 0 || game.ball.x > 700) {
+        const scorer = game.ball.x < 0 ? 1 : 0;
+        game.scores[scorer]++;
+        ballPaused = true;
+        resetBall(game);
+        setTimeout(() => {
+          ballPaused = false;
+        }, 1000);
+      }
     }
 
-    // Prepare paddle positions for each player
     const stateForP1 = {
       ball: mirrorBall(game.ball, false),
       myPaddle: game.paddles[0],
@@ -482,7 +473,6 @@ function startGameLoop(room) {
     io.to(game.players[0]).emit("game_state", stateForP1);
     io.to(game.players[1]).emit("game_state", stateForP2);
 
-    // If both players left, stop game and clear intervals
     if (game.aiActive[0] && game.aiActive[1]) {
       clearInterval(interval);
       clearInterval(speedIncreaseInterval);
@@ -491,7 +481,7 @@ function startGameLoop(room) {
   }, 1000 / FPS);
 }
 
-function resetBall(game) {
+function resetBall(game, callback) {
   game.ball.x = 350;
   game.ball.y = 200;
   game.ball.vx = Math.random() > 0.5 ? 5 : -5;
