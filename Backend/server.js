@@ -97,25 +97,44 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Count votes
     const votes = game.pauseVotes.filter(Boolean).length;
-    const otherPlayerId = game.players[1 - playerIdx];
 
-    socket.emit("chat_message", {
-      text: "Pause vote sent. Waiting for the other player to vote...",
-      author: "",
-      color: "#FFD600",
-    });
+    // Sender gets "sent" message + votes
+    if (votes == 1) {
+      socket.emit("chat_message", {
+        text: "Pause vote sent. Waiting for the other player to vote...",
+        author: "",
+        color: "#FFD600",
+      });
+    } else {
+      socket.emit("chat_message", {
+        text: "Pause vote sent. Game will pause after this round.",
+        author: "",
+        color: "#FFD600",
+      });
+    }
     socket.emit("chat_message", {
       text: `Pause votes: ${votes}/2`,
       author: "",
       color: "#FFD600",
     });
 
-    io.to(otherPlayerId).emit("chat_message", {
-      text: "Pause vote received. Press pause to vote.",
-      author: "",
-      color: "#FFD600",
-    });
+    // Receiver gets "received" message + votes
+    const otherPlayerId = game.players[1 - playerIdx];
+    if (votes == 1) {
+      io.to(otherPlayerId).emit("chat_message", {
+        text: "Pause vote received. Press pause to vote.",
+        author: "",
+        color: "#FFD600",
+      });
+    } else {
+      io.to(otherPlayerId).emit("chat_message", {
+        text: "Pause vote received. Game will pause after this round.",
+        author: "",
+        color: "#FFD600",
+      });
+    }
     io.to(otherPlayerId).emit("chat_message", {
       text: `Pause votes: ${votes}/2`,
       author: "",
@@ -147,7 +166,7 @@ io.on("connection", (socket) => {
   // Resume voting with solo player auto-confirm and vote timeout
   socket.on("resume_vote", ({ room }) => {
     const game = games[room];
-    if (!game || !game.paused || game.pendingResume) return;
+    if (!game || game.paused || game.pendingResume) return;
 
     const playerIdx = game.players.indexOf(socket.id);
     if (playerIdx === -1) return;
@@ -160,10 +179,10 @@ io.on("connection", (socket) => {
     const isSolo = connectedPlayers.length === 1;
 
     if (isSolo) {
-      game.pendingResume = true;
+      game.pendingPause = true;
 
       socket.emit("chat_message", {
-        text: "Resume vote auto-confirmed (no other player connected).",
+        text: "Pause vote auto-confirmed (no other player connected).",
         author: "",
         color: "#FFD600",
       });
@@ -173,29 +192,48 @@ io.on("connection", (socket) => {
         color: "#FFD600",
       });
 
-      socket.emit("resume_pending");
+      io.to(room).emit("pause_pending_ball");
       return;
     }
 
+    // Count votes
     const votes = game.resumeVotes.filter(Boolean).length;
-    const otherPlayerId = game.players[1 - playerIdx];
 
-    socket.emit("chat_message", {
-      text: "Resume vote sent. Waiting for the other player to vote...",
-      author: "",
-      color: "#FFD600",
-    });
+    // Sender gets "sent" message + votes
+    if (votes == 1) {
+        socket.emit("chat_message", {
+          text: "Resume vote sent. Waiting for the other player to vote...",
+          author: "",
+          color: "#FFD600",
+        });
+    }   else {
+        socket.emit("chat_message", {
+        text: "Resume vote sent. Game will resume in 3 seconds.",
+        author: "",
+        color: "#FFD600",
+      });
+    }
     socket.emit("chat_message", {
       text: `Resume votes: ${votes}/2`,
       author: "",
       color: "#FFD600",
     });
 
-    io.to(otherPlayerId).emit("chat_message", {
-      text: "Resume vote received. Press resume to vote.",
-      author: "",
-      color: "#FFD600",
-    });
+    // Receiver gets "received" message + votes
+    const otherPlayerId = game.players[1 - playerIdx];
+    if (votes == 1) {
+        io.to(otherPlayerId).emit("chat_message", {
+          text: "Resume vote received. Press resume to vote.",
+          author: "",
+          color: "#FFD600",
+        });
+    } else {
+        io.to(otherPlayerId).emit("chat_message", {
+        text: "Resume vote received. Game will resume in 3 seconds.",
+        author: "",
+        color: "#FFD600",
+      });
+    }
     io.to(otherPlayerId).emit("chat_message", {
       text: `Resume votes: ${votes}/2`,
       author: "",
@@ -203,23 +241,24 @@ io.on("connection", (socket) => {
     });
 
     // Set timeout to clear votes after 60 seconds
-    if (game.resumeVoteTimeout) clearTimeout(game.resumeVoteTimeout);
-    game.resumeVoteTimeout = setTimeout(() => {
-      game.resumeVotes = [false, false];
+    if (game.resumeVoteTimout) clearTimeout(game.resumeVoteTimout);
+    game.resumeVoteTimout = setTimeout(() => {
+      game.pauseVotes = [false, false];
       io.to(room).emit("chat_message", {
-        text: "Resume vote expired after 60 seconds.",
+        text: "Pause vote expired after 60 seconds.",
         author: "",
         color: "#FFD600",
       });
     }, 60000);
 
-    socket.emit("resume_pending");
-
     if (game.resumeVotes[0] && game.resumeVotes[1]) {
-      clearTimeout(game.resumeVoteTimeout);
-      game.resumeVoteTimeout = null;
+      clearTimeout(game.resumeVoteTimout);
+      game.resumeVoteTimout = null;
 
       game.pendingResume = true;
+      io.to(room).emit("resume_pending_ball");
+    } else {
+      socket.emit("resume_pending_other");
     }
   });
 
